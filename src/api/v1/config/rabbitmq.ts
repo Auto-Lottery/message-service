@@ -1,4 +1,4 @@
-import { RABBITMQ_CONFIG, isDev } from ".";
+import { RABBITMQ_CONFIG } from ".";
 import RabbitMQManager from "../services/rabbitmq-manager";
 import { infoLog } from "../utilities/log";
 

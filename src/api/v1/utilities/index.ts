@@ -36,7 +36,7 @@ export const getAmountAndDescriptionFromSmsBody = (
     return {
       state: true,
       amount: Number(amount),
-      description: smsBody.substring(descriptionStartIndex + 15)
+      description: smsBody.substring(descriptionStartIndex + 16)
     };
   } else {
     return {
