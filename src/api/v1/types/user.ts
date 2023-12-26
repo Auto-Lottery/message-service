@@ -7,6 +7,7 @@ export type User = {
   phoneNumber: string;
   operator: string;
   _id: string;
+  createdDate?: number;
 };
 
 export type UserWithToken = {
