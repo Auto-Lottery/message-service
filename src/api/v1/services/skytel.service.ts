@@ -4,32 +4,32 @@ import VaultManager from "./vault-manager";
 import { MobileOperator } from "../types/enums";
 import { SmsService } from "./sms.service";
 
-type GmobileConfig = {
+type SkytelConfig = {
   username: string;
   password: string;
   url: string;
   from: string;
 };
 
-export class GmobileApiService {
-  private static config: GmobileConfig;
+export class SkytelApiService {
+  private static config: SkytelConfig;
   private smsService;
   constructor() {
     this.smsService = new SmsService();
   }
 
-  public static async getConfig(): Promise<GmobileConfig> {
-    if (!GmobileApiService.config) {
+  public static async getConfig(): Promise<SkytelConfig> {
+    if (!SkytelApiService.config) {
       const vaultManager = VaultManager.getInstance();
-      const config = await vaultManager.read("kv/data/smsGmobile");
-      GmobileApiService.config = config as GmobileConfig;
+      const config = await vaultManager.read("kv/data/smsSkytel");
+      SkytelApiService.config = config as SkytelConfig;
     }
     return this.config;
   }
 
   async receiveSmsFromQueue() {
     const exchangeName = "sms";
-    const queueName = MobileOperator.GMOBILE;
+    const queueName = MobileOperator.SKYTEL;
     const routingKey = "send";
     const rabbitMqManager = RabbitMQManager.getInstance();
     const queueChannel = await rabbitMqManager.createChannel(exchangeName);
@@ -58,11 +58,11 @@ export class GmobileApiService {
           }
           try {
             const smsData = JSON.parse(dataJsonString);
-            const smsConfig = await GmobileApiService.getConfig();
-            const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&mobile=${smsData.toNumber}&sms=${smsData.smsBody}`;
+            // const smsConfig = await SkytelApiService.getConfig();
+            // const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&mobile=${smsData.toNumber}&sms=${smsData.smsBody}`;
             const res = await this.smsService.sendSms({
-              operator: MobileOperator.GMOBILE,
-              smsUrl,
+              operator: MobileOperator.SKYTEL,
+              smsUrl: "",
               ...smsData
             });
             if (res.code === 200) {

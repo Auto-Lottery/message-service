@@ -1,9 +1,11 @@
+import axios from "axios";
 import MessageModel from "../models/message.model";
 import SentSmsModel from "../models/sent-sms.model";
+import { MobileOperator } from "../types/enums";
 import { Message, SmsMessage } from "../types/sms-message";
 import { User } from "../types/user";
 import { getAmountAndDescriptionFromSmsBody } from "../utilities";
-import { errorLog } from "../utilities/log";
+import { debugLog, errorLog } from "../utilities/log";
 import { AuthApiService } from "./auth-api.service";
 import RabbitMQManager from "./rabbitmq-manager";
 
@@ -171,6 +173,129 @@ export class SmsService {
       }
     } catch (err) {
       errorLog(err);
+    }
+  }
+
+  async sendSms({
+    operator,
+    smsUrl,
+    toNumber,
+    smsBody,
+    sentSmsId,
+    additionalData
+  }: {
+    operator: MobileOperator;
+    smsUrl: string;
+    toNumber: string;
+    smsBody: string;
+    sentSmsId?: string;
+    additionalData?: string;
+  }) {
+    let _sentSmsId = sentSmsId;
+    let foundSentSms = null;
+
+    if (!_sentSmsId) {
+      const sentSmsData = {
+        body: smsBody,
+        operator: operator,
+        status: "SENDING"
+      };
+      foundSentSms = await SentSmsModel.create({
+        ...sentSmsData,
+        toNumbersCount: 1
+      });
+      _sentSmsId = foundSentSms._id.toString();
+    }
+
+    try {
+      if ([MobileOperator.MOBICOM, MobileOperator.UNITEL].includes(operator)) {
+        const res = await axios.get(smsUrl);
+
+        debugLog(`Send sms ${operator}:::: `, res);
+
+        if (!foundSentSms) {
+          foundSentSms = await SentSmsModel.findById(_sentSmsId);
+        }
+        const sentSmsCount =
+          (foundSentSms?.failedNumbers?.length || 0) +
+          (foundSentSms?.successNumbers?.length || 0);
+        const updateQuery = {
+          $set: {}
+        };
+        if (sentSmsCount + 1 >= (foundSentSms?.toNumbersCount || 0)) {
+          updateQuery.$set = {
+            status: "COMPLETED"
+          };
+        }
+
+        // comment bolgoson hesgiig daraa ashiglanaa
+        if (res.data === "SUCCESS") {
+          await SentSmsModel.updateOne(
+            {
+              _id: _sentSmsId
+            },
+            {
+              $push: {
+                successNumbers: toNumber
+              },
+              ...updateQuery
+            }
+          );
+        } else {
+          await SentSmsModel.updateOne(
+            {
+              _id: _sentSmsId
+            },
+            {
+              $push: {
+                failedNumbers: toNumber
+              },
+              ...updateQuery
+            }
+          );
+        }
+        return {
+          code: 200,
+          data: res.data
+        };
+      } else {
+        if (!foundSentSms) {
+          foundSentSms = await SentSmsModel.findById(_sentSmsId);
+        }
+        const sentSmsCount =
+          (foundSentSms?.failedNumbers?.length || 0) +
+          (foundSentSms?.successNumbers?.length || 0);
+        const updateQuery = {
+          $set: {}
+        };
+        if (sentSmsCount + 1 >= (foundSentSms?.toNumbersCount || 0)) {
+          updateQuery.$set = {
+            status: "COMPLETED",
+            additionalData: additionalData
+          };
+        }
+        await SentSmsModel.updateOne(
+          {
+            _id: _sentSmsId
+          },
+          {
+            $push: {
+              failedNumbers: toNumber
+            },
+            ...updateQuery
+          }
+        );
+        return {
+          code: 200,
+          data: true
+        };
+      }
+    } catch (err) {
+      errorLog("SEND UNITEL SMS ERR::: ", err);
+      return {
+        code: 500,
+        message: "Мессеж илгээхэд алдаа гарлаа"
+      };
     }
   }
 }

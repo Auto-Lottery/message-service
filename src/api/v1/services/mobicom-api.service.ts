@@ -1,9 +1,8 @@
-import axios from "axios";
 import { errorLog } from "../utilities/log";
 import RabbitMQManager from "./rabbitmq-manager";
 import VaultManager from "./vault-manager";
 import { MobileOperator } from "../types/enums";
-import SentSmsModel from "../models/sent-sms.model";
+import { SmsService } from "./sms.service";
 
 type MobicomConfig = {
   username: string;
@@ -14,7 +13,10 @@ type MobicomConfig = {
 
 export class MobicomApiService {
   private static config: MobicomConfig;
-  constructor() {}
+  private smsService;
+  constructor() {
+    this.smsService = new SmsService();
+  }
 
   public static async getConfig(): Promise<MobicomConfig> {
     if (!MobicomApiService.config) {
@@ -49,8 +51,6 @@ export class MobicomApiService {
       async (msg) => {
         if (msg?.content) {
           const dataJsonString = msg.content.toString();
-
-          console.log("uuu Mobicom", dataJsonString);
           if (!dataJsonString) {
             errorLog("Queue empty message");
             queueChannel.ack(msg);
@@ -58,11 +58,13 @@ export class MobicomApiService {
           }
           try {
             const smsData = JSON.parse(dataJsonString);
-            const res = await this.sendSms(
-              smsData.toNumber,
-              smsData.smsBody,
-              smsData.sentSmsId
-            );
+            const smsConfig = await MobicomApiService.getConfig();
+            const smsUrl = `${smsConfig.url}?servicename=${smsConfig.servicename}&username=${smsConfig.username}&from=${smsConfig.from}&to=${smsData.toNumber}&msg=${smsData.smsBody}`;
+            const res = await this.smsService.sendSms({
+              operator: MobileOperator.MOBICOM,
+              smsUrl,
+              ...smsData
+            });
             if (res.code === 200) {
               queueChannel.ack(msg);
               return;
@@ -76,79 +78,5 @@ export class MobicomApiService {
         noAck: false
       }
     );
-  }
-
-  async sendSms(toNumber: string, smsBody: string, sentSmsId?: string) {
-    let _sentSmsId = sentSmsId;
-    let foundSentSms = null;
-    const smsConfig = await MobicomApiService.getConfig();
-    if (!_sentSmsId) {
-      const sentSmsData = {
-        body: smsBody,
-        operator: MobileOperator.MOBICOM,
-        status: "SENDING"
-      };
-      foundSentSms = await SentSmsModel.create({
-        ...sentSmsData,
-        toNumbersCount: 1
-      });
-      _sentSmsId = foundSentSms._id.toString();
-    }
-    try {
-      const res = await axios.get(
-        `${smsConfig.url}?servicename=${smsConfig.servicename}&username=${smsConfig.username}&from=${smsConfig.from}&to=${toNumber}&msg=${smsBody}`
-      );
-
-      if (!foundSentSms) {
-        foundSentSms = await SentSmsModel.findById(_sentSmsId);
-      }
-      const sentSmsCount =
-        (foundSentSms?.failedNumbers?.length || 0) +
-        (foundSentSms?.successNumbers?.length || 0);
-      const updateQuery = {
-        $set: {}
-      };
-      if (sentSmsCount + 1 >= (foundSentSms?.toNumbersCount || 0)) {
-        updateQuery.$set = {
-          status: "COMPLETED"
-        };
-      }
-
-      if (res.data === "SUCCESS") {
-        await SentSmsModel.updateOne(
-          {
-            _id: _sentSmsId
-          },
-          {
-            $push: {
-              successNumbers: toNumber
-            },
-            ...updateQuery
-          }
-        );
-      } else {
-        await SentSmsModel.updateOne(
-          {
-            _id: _sentSmsId
-          },
-          {
-            $push: {
-              failedNumbers: toNumber
-            },
-            ...updateQuery
-          }
-        );
-      }
-      return {
-        code: 200,
-        data: res.data
-      };
-    } catch (err) {
-      errorLog("SEND MOBICOM SMS ERR::: ", err);
-      return {
-        code: 500,
-        message: "Мессеж илгээхэд алдаа гарлаа"
-      };
-    }
   }
 }
