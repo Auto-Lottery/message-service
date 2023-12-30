@@ -150,7 +150,7 @@ export class SmsService {
     operator: string,
     toNumber: string,
     smsBody: string,
-    sentSmsId: string
+    sentSmsId?: string
   ) {
     try {
       const rabbitMQManager = RabbitMQManager.getInstance();

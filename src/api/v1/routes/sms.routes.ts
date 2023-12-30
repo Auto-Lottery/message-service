@@ -2,8 +2,6 @@ import express from "express";
 import { SmsService } from "../services/sms.service";
 import { AuthApiService } from "../services/auth-api.service";
 import { MobileOperator } from "../types/enums";
-import { UnitelApiService } from "../services/unitel-api.service";
-import { MobicomApiService } from "../services/mobicom-api.service";
 const smsRoutes = express.Router();
 
 smsRoutes.post("/receiveSms", async (req, res) => {
@@ -50,20 +48,12 @@ smsRoutes.post(
   async (req, res) => {
     const { toNumber, operator, smsBody } = req.body;
     try {
-      if (operator === MobileOperator.UNITEL) {
-        const unitelApiService = new UnitelApiService();
-        const result = await unitelApiService.sendSms(toNumber, smsBody);
-        return res.send(result);
-      } else if (operator === MobileOperator.MOBICOM) {
-        const mobicomApiService = new MobicomApiService();
-        const result = await mobicomApiService.sendSms(toNumber, smsBody);
-        return res.send(result);
-      } else {
-        return res.send({
-          code: 500,
-          message: `Unsupported operator {${operator}}`
-        });
-      }
+      const smsService = new SmsService();
+      smsService.smsRequestSentToQueue(operator, toNumber, smsBody);
+      return {
+        code: 200,
+        data: true
+      };
     } catch (err) {
       res.status(500).json(err);
     }
