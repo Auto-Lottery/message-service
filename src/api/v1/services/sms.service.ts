@@ -352,7 +352,7 @@ export class SmsService {
         };
       }
     } catch (err) {
-      errorLog("SEND SMS ERR::: ---${err}", err);
+      errorLog(`SEND SMS ERR::: ---${err}`, err);
       let errorMessage = "Мессеж илгээхэд алдаа гарлаа";
       if (err instanceof AxiosError) {
         errorMessage = `${err.message} - ${err.stack}`;
@@ -374,7 +374,7 @@ export class SmsService {
       );
       return {
         code: 500,
-        message: "Мессеж илгээхэд алдаа гарлаа"
+        message: errorMessage
       };
     }
   }

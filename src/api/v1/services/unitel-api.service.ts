@@ -62,15 +62,12 @@ export class UnitelApiService {
             const smsData = JSON.parse(dataJsonString);
             const smsConfig = await UnitelApiService.getConfig();
             const smsUrl = `${smsConfig.url}?uname=${smsConfig.uname}&upass=${smsConfig.pass}&from=${smsConfig.fromNumber}&mobile=${smsData.toNumber}&sms=${smsData.smsBody}`;
-            const res = await this.smsService.sendSms({
+            await this.smsService.sendSms({
               operator: MobileOperator.UNITEL,
               smsUrl: smsUrl,
               ...smsData
             });
-            if (res.code === 200) {
-              queueChannel.ack(msg);
-              return;
-            }
+            queueChannel.ack(msg);
           } catch (err) {
             errorLog("Transaction update queue error::: ", err);
           }

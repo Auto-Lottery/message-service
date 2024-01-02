@@ -60,15 +60,12 @@ export class GmobileApiService {
             const smsData = JSON.parse(dataJsonString);
             const smsConfig = await GmobileApiService.getConfig();
             const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&to=${smsData.toNumber}&text=${smsData.smsBody}`;
-            const res = await this.smsService.sendSms({
+            await this.smsService.sendSms({
               operator: MobileOperator.GMOBILE,
               smsUrl,
               ...smsData
             });
-            if (res.code === 200) {
-              queueChannel.ack(msg);
-              return;
-            }
+            queueChannel.ack(msg);
           } catch (err) {
             errorLog("Transaction update queue error::: ", err);
           }

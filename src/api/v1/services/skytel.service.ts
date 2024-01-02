@@ -60,16 +60,13 @@ export class SkytelApiService {
             const smsConfig = await SkytelApiService.getConfig();
             // https://smsgw.skytel.mn/SMSGW-war/pushsms?id=1000456&src=130904dest=91102036&text=turshilt
             const smsUrl = `${smsConfig.url}?id=${smsConfig.id}&src=${smsConfig.src}&dest=${smsData.toNumber}&text=${smsData.smsBody}`;
-            const res = await this.smsService.sendSms({
+            await this.smsService.sendSms({
               operator: MobileOperator.SKYTEL,
               smsUrl: smsUrl,
               ...smsData
             });
 
-            if (res.code === 200) {
-              queueChannel.ack(msg);
-              return;
-            }
+            queueChannel.ack(msg);
           } catch (err) {
             errorLog("Transaction update queue error::: ", err);
           }

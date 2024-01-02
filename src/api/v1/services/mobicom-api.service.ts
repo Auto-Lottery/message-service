@@ -60,15 +60,12 @@ export class MobicomApiService {
             const smsData = JSON.parse(dataJsonString);
             const smsConfig = await MobicomApiService.getConfig();
             const smsUrl = `${smsConfig.url}?servicename=${smsConfig.servicename}&username=${smsConfig.username}&from=${smsConfig.from}&to=${smsData.toNumber}&msg=${smsData.smsBody}`;
-            const res = await this.smsService.sendSms({
+            await this.smsService.sendSms({
               operator: MobileOperator.MOBICOM,
               smsUrl,
               ...smsData
             });
-            if (res.code === 200) {
-              queueChannel.ack(msg);
-              return;
-            }
+            queueChannel.ack(msg);
           } catch (err) {
             errorLog("Transaction update queue error::: ", err);
           }
