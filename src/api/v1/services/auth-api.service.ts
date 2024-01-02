@@ -67,14 +67,16 @@ export class AuthApiService {
     }
   }
 
-  async getAllUsers(
+  async getAllUsersPhoneNumber(
+    page: number,
+    pageSize: number,
     token: string,
     operator?: string
-  ): Promise<CustomResponse<User[]>> {
+  ): Promise<CustomResponse<{ total: number; phoneNumberList: string[] }>> {
     try {
       const res = await axios.get(
-        `${AUTH_SERVICE_URL}/v1/admin/allUsers${
-          operator ? `?operator=${operator}` : ""
+        `${AUTH_SERVICE_URL}/v1/admin/allUsersPhoneNumber?page=${page}&pageSize=${pageSize}${
+          operator ? `&operator=${operator}` : ""
         }`,
         {
           headers: {

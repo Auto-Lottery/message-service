@@ -37,6 +37,9 @@ const SentSmsSchema = new Schema(
     failedNumbers: {
       type: [String]
     },
+    description: {
+      type: String
+    },
     additionalData: {
       type: String
     },

@@ -59,7 +59,7 @@ export class GmobileApiService {
           try {
             const smsData = JSON.parse(dataJsonString);
             const smsConfig = await GmobileApiService.getConfig();
-            const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&mobile=${smsData.toNumber}&sms=${smsData.smsBody}`;
+            const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&to=${smsData.toNumber}&text=${smsData.smsBody}`;
             const res = await this.smsService.sendSms({
               operator: MobileOperator.GMOBILE,
               smsUrl,

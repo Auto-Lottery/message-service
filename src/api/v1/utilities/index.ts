@@ -6,7 +6,6 @@ export const getAmountAndDescriptionFromSmsBody = (
   amount?: number;
   description?: string;
 } => {
-  //  "Tani 5***9626 toot dansand ORLOGO:50,000.00MNT guilgee hiigdej ULDEGDEL:50,440.00MNT bolloo. Guilgenii utga:88266716";
 
   if (!smsBody) {
     return {

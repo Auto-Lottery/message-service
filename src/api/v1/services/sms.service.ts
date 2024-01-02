@@ -1,16 +1,18 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import MessageModel from "../models/message.model";
 import SentSmsModel from "../models/sent-sms.model";
 import { MobileOperator } from "../types/enums";
 import { Message, SmsMessage } from "../types/sms-message";
-import { User } from "../types/user";
 import { getAmountAndDescriptionFromSmsBody } from "../utilities";
-import { debugLog, errorLog } from "../utilities/log";
+import { errorLog, infoLog } from "../utilities/log";
 import { AuthApiService } from "./auth-api.service";
 import RabbitMQManager from "./rabbitmq-manager";
-
+import { CustomResponse } from "../types/custom-response";
 export class SmsService {
-  constructor() {}
+  private authApiService;
+  constructor() {
+    this.authApiService = new AuthApiService();
+  }
 
   async receiveDepositSms(message: SmsMessage) {
     const messageData: {
@@ -74,6 +76,63 @@ export class SmsService {
     }
   }
 
+  async sendSmsToPaginationUsers(
+    page: number = 1,
+    pageSize: number = 100,
+    operator: string,
+    sentSmsData: {
+      body: string;
+      massId: string;
+      operator: string;
+      status: string;
+    },
+    smsBody: string,
+    token?: string,
+    sentSms?: string
+  ): Promise<CustomResponse<boolean>> {
+    let _sentSmsId = sentSms;
+    const res = await this.authApiService.getAllUsersPhoneNumber(
+      page,
+      pageSize,
+      token || "",
+      operator
+    );
+    infoLog("Call users page:: ", page);
+    if (res.code === 500) {
+      return res;
+    }
+
+    if (page === 1) {
+      const sentSms = await SentSmsModel.create({
+        ...sentSmsData,
+        toNumbersCount: res.data.total
+      });
+      _sentSmsId = sentSms._id.toString();
+    }
+
+    res.data.phoneNumberList.forEach((phoneNumber) => {
+      this.smsRequestSentToQueue(operator, phoneNumber, smsBody, _sentSmsId);
+    });
+
+    if (page * pageSize < res.data.total) {
+      const result = await this.sendSmsToPaginationUsers(
+        page + 1,
+        pageSize,
+        operator,
+        sentSmsData,
+        smsBody,
+        token,
+        _sentSmsId
+      );
+      return result;
+    }
+
+    return {
+      code: 200,
+      data: true
+    };
+  }
+
   async sendMassSms({
     isExternal,
     toNumberList = [],
@@ -104,7 +163,7 @@ export class SmsService {
         uniqueToNumbers.map((phoneNumber: string) => {
           this.smsRequestSentToQueue(
             operator,
-            phoneNumber,
+            phoneNumber.trim(),
             smsBody,
             newSentSms._id.toString()
           );
@@ -115,24 +174,15 @@ export class SmsService {
         };
       }
 
-      const authApiService = new AuthApiService();
-      const res = await authApiService.getAllUsers(token || "", operator);
-      if (res.code === 500) {
-        return res;
-      }
+      this.sendSmsToPaginationUsers(
+        1,
+        300,
+        operator,
+        sentSmsData,
+        smsBody,
+        token
+      );
 
-      const sentSms = await SentSmsModel.create({
-        ...sentSmsData,
-        toNumbersCount: res.data.length
-      });
-      res.data.forEach((user: User) => {
-        this.smsRequestSentToQueue(
-          operator,
-          user.phoneNumber,
-          smsBody,
-          sentSms._id.toString()
-        );
-      });
       return {
         code: 200,
         data: true
@@ -194,6 +244,7 @@ export class SmsService {
     let _sentSmsId = sentSmsId;
     let foundSentSms = null;
 
+    infoLog("mass _sentSmsId ", _sentSmsId);
     if (!_sentSmsId) {
       const sentSmsData = {
         body: smsBody,
@@ -205,17 +256,24 @@ export class SmsService {
         toNumbersCount: 1
       });
       _sentSmsId = foundSentSms._id.toString();
+      infoLog("single _sentSmsId ", _sentSmsId);
     }
 
     try {
-      if ([MobileOperator.MOBICOM, MobileOperator.UNITEL].includes(operator)) {
+      if (
+        [
+          MobileOperator.MOBICOM,
+          MobileOperator.UNITEL,
+          MobileOperator.GMOBILE,
+          MobileOperator.SKYTEL
+        ].includes(operator)
+      ) {
         const res = await axios.get(smsUrl);
-
-        debugLog(`Send sms ${operator}:::: `, res);
 
         if (!foundSentSms) {
           foundSentSms = await SentSmsModel.findById(_sentSmsId);
         }
+
         const sentSmsCount =
           (foundSentSms?.failedNumbers?.length || 0) +
           (foundSentSms?.successNumbers?.length || 0);
@@ -228,8 +286,11 @@ export class SmsService {
           };
         }
 
-        // comment bolgoson hesgiig daraa ashiglanaa
-        if (res.data === "SUCCESS") {
+        if (
+          ["SUCCESS", "Sent", "OK", "0: Accepted for delivery"].includes(
+            res.data
+          )
+        ) {
           await SentSmsModel.updateOne(
             {
               _id: _sentSmsId
@@ -291,7 +352,26 @@ export class SmsService {
         };
       }
     } catch (err) {
-      errorLog("SEND UNITEL SMS ERR::: ", err);
+      errorLog("SEND SMS ERR::: ---${err}", err);
+      let errorMessage = "Мессеж илгээхэд алдаа гарлаа";
+      if (err instanceof AxiosError) {
+        errorMessage = `${err.message} - ${err.stack}`;
+      }
+      await SentSmsModel.updateOne(
+        {
+          _id: _sentSmsId
+        },
+        {
+          $push: {
+            failedNumbers: toNumber
+          },
+          $set: {
+            status: "FAILED",
+            additionalData: additionalData,
+            description: errorMessage
+          }
+        }
+      );
       return {
         code: 500,
         message: "Мессеж илгээхэд алдаа гарлаа"

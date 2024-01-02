@@ -5,10 +5,9 @@ import { MobileOperator } from "../types/enums";
 import { SmsService } from "./sms.service";
 
 type SkytelConfig = {
-  username: string;
-  password: string;
+  id: string;
+  src: string;
   url: string;
-  from: string;
 };
 
 export class SkytelApiService {
@@ -58,13 +57,15 @@ export class SkytelApiService {
           }
           try {
             const smsData = JSON.parse(dataJsonString);
-            // const smsConfig = await SkytelApiService.getConfig();
-            // const smsUrl = `${smsConfig.url}?username=${smsConfig.username}&password=${smsConfig.password}&from=${smsConfig.from}&mobile=${smsData.toNumber}&sms=${smsData.smsBody}`;
+            const smsConfig = await SkytelApiService.getConfig();
+            // https://smsgw.skytel.mn/SMSGW-war/pushsms?id=1000456&src=130904dest=91102036&text=turshilt
+            const smsUrl = `${smsConfig.url}?id=${smsConfig.id}&src=${smsConfig.src}&dest=${smsData.toNumber}&text=${smsData.smsBody}`;
             const res = await this.smsService.sendSms({
               operator: MobileOperator.SKYTEL,
-              smsUrl: "",
+              smsUrl: smsUrl,
               ...smsData
             });
+
             if (res.code === 200) {
               queueChannel.ack(msg);
               return;

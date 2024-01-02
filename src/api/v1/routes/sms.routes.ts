@@ -22,7 +22,14 @@ smsRoutes.post(
       const { isExternal, toNumberList, operator, smsBody } = req.body;
       const { authorization } = req.headers;
       const smsService = new SmsService();
-      if ([MobileOperator.UNITEL, MobileOperator.MOBICOM].includes(operator)) {
+      if (
+        [
+          MobileOperator.UNITEL,
+          MobileOperator.MOBICOM,
+          MobileOperator.GMOBILE,
+          MobileOperator.SKYTEL
+        ].includes(operator)
+      ) {
         const response = await smsService.sendMassSms({
           isExternal,
           toNumberList,
@@ -42,22 +49,25 @@ smsRoutes.post(
   }
 );
 
-smsRoutes.post(
-  "/sendSms",
-  AuthApiService.adminVerifyToken,
-  async (req, res) => {
-    const { toNumber, operator, smsBody } = req.body;
-    try {
-      const smsService = new SmsService();
-      smsService.smsRequestSentToQueue(operator, toNumber, smsBody);
-      return {
-        code: 200,
-        data: true
-      };
-    } catch (err) {
-      res.status(500).json(err);
-    }
+smsRoutes.post("/sendSms", AuthApiService.adminVerifyToken, (req, res) => {
+  const { toNumber, operator, smsBody } = req.body;
+  try {
+    const smsService = new SmsService();
+    smsService.smsRequestSentToQueue(operator, toNumber, smsBody);
+    return res.send({
+      code: 200,
+      data: true
+    });
+  } catch (err) {
+    return res.status(500).json(err);
   }
-);
+});
+
+smsRoutes.post("/test", (req, res) => {
+  console.log("Test::: ", req.body);
+  res.send({
+    data: "OK"
+  });
+});
 
 export default smsRoutes;
