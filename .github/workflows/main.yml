@@ -37,11 +37,11 @@ jobs:
     - name: Set up SSH
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github-actions
+        echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/github-actions
         chmod 600 ~/.ssh/github-actions
-        ssh-keyscan -t rsa ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/github-actions
+        ssh-keyscan -t rsa your-deploy-host >> ~/.ssh/known_hosts
     - name: Deploy to Docker Host
       run: |
         ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'docker pull ${{ secrets.DOCKER_NAMESPACE }}/message-service:latest && docker-compose up -d'
