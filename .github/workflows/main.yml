@@ -36,11 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - name: Debug SSH Key
-      run: |
-        echo "Private Key:"
-        echo "${{ secrets.SSH_PRIVATE_KEY }}"
-        echo "End of Private Key"
     - name: Set up SSH
       run: |
         mkdir -p ~/.ssh
@@ -51,6 +46,6 @@ jobs:
         ssh-keyscan -t rsa ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
     - name: Deploy to Docker Host
       run: |
-        ssh -i ~/.ssh/github-actions ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'docker pull ${{ secrets.DOCKER_NAMESPACE }}/message-service:latest && docker-compose up -d'
+        ssh -i ~/.ssh/github-actions ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'docker pull ${{ secrets.DOCKER_NAMESPACE }}/message-service:latest && cd ./docker-composer && docker-compose up -d'
       env:
         DOCKER_CLI_ASH: "1"
