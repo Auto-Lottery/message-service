@@ -18,7 +18,7 @@ app.use(
 );
 
 app.get("/", function (req, res: express.Response) {
-  res.send("Message service!");
+  res.send("Message service auto deploy!");
 });
 
 app.use("/v1", V1Routes);
