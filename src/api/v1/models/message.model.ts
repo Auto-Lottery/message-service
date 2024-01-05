@@ -5,6 +5,9 @@ const MessageSchema = new Schema(
     body: {
       type: String
     },
+    smsId: {
+      type: String
+    },
     fromAddress: {
       type: String,
       required: true

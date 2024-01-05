@@ -17,6 +17,7 @@ export class SmsService {
   async receiveDepositSms(message: SmsMessage) {
     const messageData: {
       body?: string;
+      smsId?: string;
       fromAddress?: string;
       date: Date | string | null;
       description: string;
@@ -24,6 +25,7 @@ export class SmsService {
     } = {
       body: message.body,
       fromAddress: message.fromAddress,
+      smsId: message.smsId,
       date: message.date ? new Date(Number(message.date)) : null,
       description: "",
       status: ""
@@ -35,9 +37,29 @@ export class SmsService {
         messageData.description = res.errorText || "";
         messageData.status = "FAILED";
         await MessageModel.create(messageData);
-        return false;
+        return {
+          code: 200,
+          data: {
+            smsId: message.smsId,
+            status: messageData.status
+          }
+        };
       }
 
+      const list = await MessageModel.find({
+        smsId: messageData.smsId
+      });
+
+      if (list && list.length > 0) {
+        infoLog("Duplicate message: ", messageData);
+        return {
+          code: 200,
+          data: {
+            smsId: message.smsId,
+            status: "DUPLICATED"
+          }
+        };
+      }
       messageData.description = "Амжилтай хүлээж авлаа";
       messageData.status = "SUCCESS";
       const createdMessage: Message = (
@@ -65,14 +87,26 @@ export class SmsService {
           }
         );
       }
-      return res;
+      return {
+        code: 200,
+        data: {
+          smsId: message.smsId,
+          status: messageData.status
+        }
+      };
     } catch (err) {
       errorLog("RECIEVE SMS ERROR::: ", err);
       messageData.description =
         err instanceof Error ? err.message : "INTERNAL SERVER ERROR";
       messageData.status = "FAILED";
       await MessageModel.create(messageData);
-      return false;
+      return {
+        code: 200,
+        data: {
+          smsId: message.smsId,
+          status: messageData.status
+        }
+      };
     }
   }
 
@@ -244,7 +278,6 @@ export class SmsService {
     let _sentSmsId = sentSmsId;
     let foundSentSms = null;
 
-    infoLog("mass _sentSmsId ", _sentSmsId);
     if (!_sentSmsId) {
       const sentSmsData = {
         body: smsBody,
@@ -256,7 +289,6 @@ export class SmsService {
         toNumbersCount: 1
       });
       _sentSmsId = foundSentSms._id.toString();
-      infoLog("single _sentSmsId ", _sentSmsId);
     }
 
     try {
