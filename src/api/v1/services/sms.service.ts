@@ -46,19 +46,21 @@ export class SmsService {
         };
       }
 
-      const list = await MessageModel.find({
-        smsId: messageData.smsId
-      });
+      if (messageData.smsId) {
+        const list = await MessageModel.find({
+          smsId: messageData.smsId
+        });
 
-      if (list && list.length > 0) {
-        infoLog("Duplicate message: ", messageData);
-        return {
-          code: 200,
-          data: {
-            smsId: message.smsId,
-            status: "DUPLICATED"
-          }
-        };
+        if (list && list.length > 0) {
+          infoLog("Duplicate message: ", messageData);
+          return {
+            code: 200,
+            data: {
+              smsId: message.smsId,
+              status: "DUPLICATED"
+            }
+          };
+        }
       }
       messageData.description = "Амжилтай хүлээж авлаа";
       messageData.status = "SUCCESS";
