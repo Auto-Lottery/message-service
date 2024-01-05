@@ -25,7 +25,7 @@ export class SmsService {
     } = {
       body: message.body,
       fromAddress: message.fromAddress,
-      smsId: message.smsId,
+      smsId: message.id,
       date: message.date ? new Date(Number(message.date)) : null,
       description: "",
       status: ""
@@ -40,7 +40,7 @@ export class SmsService {
         return {
           code: 200,
           data: {
-            smsId: message.smsId,
+            smsId: message.id,
             status: messageData.status
           }
         };
@@ -56,7 +56,7 @@ export class SmsService {
           return {
             code: 200,
             data: {
-              smsId: message.smsId,
+              smsId: message.id,
               status: "DUPLICATED"
             }
           };
@@ -92,7 +92,7 @@ export class SmsService {
       return {
         code: 200,
         data: {
-          smsId: message.smsId,
+          smsId: message.id,
           status: messageData.status
         }
       };
@@ -105,7 +105,7 @@ export class SmsService {
       return {
         code: 200,
         data: {
-          smsId: message.smsId,
+          smsId: message.id,
           status: messageData.status
         }
       };

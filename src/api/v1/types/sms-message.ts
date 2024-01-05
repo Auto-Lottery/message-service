@@ -2,7 +2,7 @@ export type SmsMessage = {
   body?: string;
   fromAddress?: string;
   date?: number;
-  smsId?: string;
+  id?: string;
 };
 
 export type Message = {
