@@ -6,7 +6,9 @@ const MessageSchema = new Schema(
       type: String
     },
     smsId: {
-      type: String
+      type: String,
+      required: true,
+      unique: true
     },
     fromAddress: {
       type: String,
@@ -20,7 +22,8 @@ const MessageSchema = new Schema(
     },
     date: {
       type: Date,
-      required: true
+      required: true,
+      unique: true
     },
     createdDate: {
       type: Date,

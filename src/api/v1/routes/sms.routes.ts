@@ -4,6 +4,16 @@ import { AuthApiService } from "../services/auth-api.service";
 import { MobileOperator } from "../types/enums";
 const smsRoutes = express.Router();
 
+smsRoutes.get("/lastSms", async (req, res) => {
+  try {
+    const smsService = new SmsService();
+    const response = await smsService.getLastSms();
+    return res.send(response);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+});
+
 smsRoutes.post("/receiveSms", async (req, res) => {
   try {
     const smsService = new SmsService();

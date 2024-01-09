@@ -14,6 +14,33 @@ export class SmsService {
     this.authApiService = new AuthApiService();
   }
 
+  async getLastSms() {
+    try {
+      const messages = await MessageModel.find({})
+        .sort({
+          date: -1
+        })
+        .limit(1);
+
+      if (messages.length > 0) {
+        return {
+          code: 200,
+          data: messages[0]
+        };
+      }
+      return {
+        code: 500,
+        data: "Not found message"
+      };
+    } catch (err) {
+      errorLog("GET LAST SMS ERROR::: ", err);
+      return {
+        code: 500,
+        message: "INTERNAL SERVER ERROR"
+      };
+    }
+  }
+
   async receiveDepositSms(message: SmsMessage) {
     const messageData: {
       body?: string;
