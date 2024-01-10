@@ -27,6 +27,10 @@ const SentSmsSchema = new Schema(
     massId: {
       type: String
     },
+    type: {
+      type: String,
+      required: true
+    },
     toNumbersCount: {
       type: Number,
       required: true

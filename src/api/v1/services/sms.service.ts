@@ -8,6 +8,12 @@ import { errorLog, infoLog } from "../utilities/log";
 import { AuthApiService } from "./auth-api.service";
 import RabbitMQManager from "./rabbitmq-manager";
 import { CustomResponse } from "../types/custom-response";
+import {
+  Condition,
+  Filter,
+  FilterValueType,
+  generateQuery
+} from "../utilities/mongo";
 export class SmsService {
   private authApiService;
   constructor() {
@@ -146,6 +152,7 @@ export class SmsService {
     sentSmsData: {
       body: string;
       massId: string;
+      type: string;
       operator: string;
       status: string;
     },
@@ -174,7 +181,13 @@ export class SmsService {
     }
 
     res.data.phoneNumberList.forEach((phoneNumber) => {
-      this.smsRequestSentToQueue(operator, phoneNumber, smsBody, _sentSmsId);
+      this.smsRequestSentToQueue(
+        operator,
+        phoneNumber,
+        sentSmsData.type,
+        smsBody,
+        _sentSmsId
+      );
     });
 
     if (page * pageSize < res.data.total) {
@@ -213,6 +226,7 @@ export class SmsService {
       const sentSmsData = {
         body: smsBody,
         massId: `${Date.now()}`,
+        type: "MASS",
         operator: operator,
         status: "SENDING"
       };
@@ -227,6 +241,7 @@ export class SmsService {
           this.smsRequestSentToQueue(
             operator,
             phoneNumber.trim(),
+            sentSmsData.type,
             smsBody,
             newSentSms._id.toString()
           );
@@ -262,6 +277,7 @@ export class SmsService {
   async smsRequestSentToQueue(
     operator: string,
     toNumber: string,
+    type: string,
     smsBody: string,
     sentSmsId?: string
   ) {
@@ -275,6 +291,7 @@ export class SmsService {
             JSON.stringify({
               operator,
               toNumber,
+              type,
               smsBody,
               sentSmsId
             })
@@ -294,6 +311,7 @@ export class SmsService {
     smsUrl,
     toNumber,
     smsBody,
+    type,
     sentSmsId,
     additionalData
   }: {
@@ -301,6 +319,7 @@ export class SmsService {
     smsUrl: string;
     toNumber: string;
     smsBody: string;
+    type: string;
     sentSmsId?: string;
     additionalData?: string;
   }) {
@@ -311,7 +330,8 @@ export class SmsService {
       const sentSmsData = {
         body: smsBody,
         operator: operator,
-        status: "SENDING"
+        status: "SENDING",
+        type: type
       };
       foundSentSms = await SentSmsModel.create({
         ...sentSmsData,
@@ -437,6 +457,51 @@ export class SmsService {
         code: 500,
         message: errorMessage
       };
+    }
+  }
+
+  async getSmsList(type: string, filter: Filter) {
+    const { field, order } = filter?.sort || {
+      field: "_id",
+      order: "desc"
+    };
+    const { page, pageSize } = filter?.pagination || {
+      page: 1,
+      pageSize: 10
+    };
+    try {
+      const skip = (page - 1) * pageSize;
+      const defaultCondition: Condition = {
+        field: "type",
+        value: type,
+        valueType: FilterValueType.STRING,
+        operator: "like"
+      };
+      if (filter?.conditions && filter?.conditions.length > 0) {
+        filter.conditions.push(defaultCondition);
+      } else {
+        filter.conditions = [defaultCondition];
+      }
+      const query = generateQuery(filter?.conditions || []);
+
+      const showFields =
+        type === "LOTTERY" || type === "OTP"
+          ? "operator status description createdDate successNumbers failedNumbers"
+          : null;
+      const users = await SentSmsModel.find(query, showFields)
+        .skip(skip)
+        .limit(pageSize)
+        .sort({
+          [field]: order === "desc" ? -1 : 1
+        });
+      const count = await SentSmsModel.countDocuments(query);
+      return {
+        smsList: users,
+        total: count
+      };
+    } catch (error) {
+      errorLog("Sms list fetch error ", error);
+      throw new Error(`Sms list fetch error`);
     }
   }
 }
