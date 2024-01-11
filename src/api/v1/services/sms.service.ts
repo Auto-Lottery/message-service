@@ -486,8 +486,24 @@ export class SmsService {
 
       const showFields =
         type === "LOTTERY" || type === "OTP"
-          ? "operator status description createdDate successNumbers failedNumbers"
-          : null;
+          ? {
+              operator: 1,
+              status: 1,
+              description: 1,
+              createdDate: 1,
+              successNumbers: 1,
+              failedNumbers: 1
+            }
+          : {
+              operator: 1,
+              status: 1,
+              description: 1,
+              createdDate: 1,
+              toNumbersCount: 1,
+              successNumbersCount: { $size: "$successNumbers" },
+              failedNumbersCount: { $size: "$failedNumbers" },
+              body: 1
+            };
       const users = await SentSmsModel.find(query, showFields)
         .skip(skip)
         .limit(pageSize)
